@@ -1,0 +1,4 @@
+1.) Hit the below URL -Salesforce Public site URL
+https://pkreader-developer-edition.ap4.force.com/index
+
+2.) Scan QR code with webcam, copy the generated URl and open it in new window to view the details based on unique key
