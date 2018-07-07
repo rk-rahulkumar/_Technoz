@@ -1,0 +1,177 @@
+/**Salesforce - VF Page*/
+<apex:page standardStylesheets="false" showChat="false" showHeader="false" sidebar="false" docType="html-5.0"
+    controller="QRReaderCtrl">
+    <html ng-app="qrCodeReader">
+        <head>
+            <style>
+                label {
+                   width: 94px;
+                }
+                .container-fluid {
+                   width: 448px;
+                   margin: 0 auto;
+                }
+                .container-fluid div {
+                   margin-top:10px;
+                }
+                .container-fluid button {
+                   margin-top: 10px 200px;
+                   width: 100px;
+                   margin: 33px 84px;
+                   background: green;
+                   border: 1px solid #3AC78C;
+                   border-radius:  3px;
+                   font-size: 24px;
+                }
+                .helperText {
+                    white-space: nowrap;
+                    margin-left: -102px;
+                }
+            </style>
+            <title>QR Code Reader</title>
+            <script src="https://code.jquery.com/jquery-1.12.3.min.js"></script>
+            <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+            <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+            <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+            
+            
+            <script type="module">
+                var app = angular.module("qrCodeReader", []);
+                app.controller('qrCodeReaderCtrl', ['$scope', 'qrCodeReaderService', function($scope, qrCodeReaderService) {
+                    $scope.uniqueNo = "{!JSENCODE(URLENCODE($CurrentPage.parameters.uniqueNo))}";
+                    $scope.displayHelperText = false;
+                    if($scope.uniqueNo) {
+                        qrCodeReaderService.getAccountInfoByAdharNo($scope.uniqueNo).then(function (successResult) {
+                            $scope.AccountRec = successResult;
+                            console.log(successResult);
+                        },
+                        function (errorSearchResult) {
+                            console.log(errorSearchResult);
+                        }); 
+                    }
+                    $scope.generateQRCode = function() { 
+                        $scope.displayHelperText = false;     
+                        $('#qrcode').html('');
+                        var qrcode = new QRCode("qrcode");
+                    
+                        function makeCode() {      
+                            function randomNumber() {
+                                var uniqueAdhharNo = 'wergddfgddfgfsdfsgs';
+                                return "https://pkreader-developer-edition.ap4.force.com/index?uniqueNo="+uniqueAdhharNo;
+                            }
+                            var value = randomNumber();
+                            var elText = value;
+                            qrcode.makeCode(elText);
+                        }
+                
+                        makeCode();
+                        $scope.displayHelperText = true;
+                        $("#qrcode").removeAttr("title");
+                    }
+                    
+                    $scope.addPayment = function() {
+                        alert('Will integrate it with payment gateway to make payment');
+                    }
+                }]);
+                
+                app.factory('qrCodeReaderService', ['$q', function ($q) {
+                    return {
+                        getAccountInfoByAdharNo : function (uniqueNo) {
+                            uniqueNo = encodeString(uniqueNo);
+                            var deferred = $q.defer();
+                            // make AJAX request to the remote service
+                            Visualforce.remoting.Manager.invokeAction( '{!$RemoteAction.QRReaderCtrl.getAccountInfoByAdharNo}' ,uniqueNo, 
+                            function (result, event) {
+                                if (event.type == 'exception') {
+                                    deferred.reject(event.message);
+                                } else {
+                                    var responseData = decodeString(result);
+                                    var find = '\'';
+                                    var re = new RegExp(find, 'g');
+                                    responseData = responseData.replace(re, '');
+                                    if(responseData != ''){
+                                        deferred.resolve(JSON.parse(responseData));
+                                    } else {
+                                        deferred.resolve(responseData);
+                                    }
+                                }
+                            }, {
+                                escape : true
+                            });
+                            return deferred.promise;
+                        }
+                    };
+                }]); 
+                
+                function encodeString(inputString) {
+                    if (inputString == null) {
+                        return inputString;
+                    }
+                    var outputString = window.btoa(unescape(encodeURIComponent(inputString)));
+                    return outputString;
+                }
+                
+                function decodeString(inputString) {
+                    if (inputString == null) {
+                        return inputString;
+                    }
+                    try {
+                        var res = inputString.match('^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$');
+                    } catch (ex) {}
+                
+                    if (res == null) {
+                        return inputString;
+                    }
+                    var outputString = decodeURIComponent(escape(window.atob(inputString)));
+                    return outputString;
+                }
+            </script>
+
+            
+        </head>
+        <body>
+            <div ng-controller="qrCodeReaderCtrl">
+                <div class="container-fluid" id="main" ng-if="!uniqueNo">               
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" id="qrcodegenerateBtn"><a href="#editable" aria-controls="editable" role="tab" data-toggle="tab" ng-click="generateQRCode()">Generate QR Code</a></li>
+                    </ul>
+                    <!--/ Nav tabs /-->
+                
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <div role="tabpanel" class="tab-pane" id="editable">
+                            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4 col-md-offset-4 col-lg-offset-4"> 
+                                <div id="qrcode"></div>
+                                <div class="helperText" ng-if="displayHelperText">Please scan the QR code, copy the URL and open it in new tab to view the details</div>
+                            </div>
+                        </div>      
+                    </div>
+                </div>
+            
+                <div class="container-fluid" id="infoContainer" ng-if="uniqueNo"> 
+                    <div>
+                        <label>Adhar No:</label>
+                        <input type="text" ng-disabled="true" id="AdharNo" ng-model="AccountRec.AdharNo"/>
+                    </div>
+                    <div>
+                        <label>Name:</label>
+                        <input type="text" id="name" ng-disabled="true" ng-model="AccountRec.Name"/>
+                    </div>
+                    <div>
+                        <label>Phone:</label>
+                        <input type="text" id="number" ng-disabled="true" ng-model="AccountRec.Phone"/>
+                    </div>
+                    <div>
+                        <label>Amount:</label>
+                        <input type="number" ng-disabled="true" id="AmountDue" ng-model="AccountRec.AmountDue"/>
+                    </div>
+                        
+                    <div>
+                        <button ng-click="addPayment()">PAY</button>
+                    </div>
+                </div>
+             </div>
+        </body>
+    </html>
+</apex:page>
